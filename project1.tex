@@ -1,0 +1,207 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+
+\title{Project Part 1\\
+\large Database Design and Data Modelling}
+\author{Group 64\\
+\\
+Aerin Brown (261076118)\\
+Stalbek Ulanbek uulu (261102435)\\
+Nehir Özsunar (261142760)}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Requirements Analysis}
+
+\subsection{Introduction}
+
+This database application is built for an international naval logistics firm that serves as the essential link between cargo owners and vessel carriers. The firm coordinates the movement of containerized freight across international waters, a process that requires precise synchronization of voyages, container assignments, and port-call tracking. To manage these operations, the system is designed to handle the logistical nuances of multi-stop itineraries and the strict handling requirements of specialized cargo while maintaining clear communication channels between carriers, clients, and their respective contacts.
+
+\subsection{Purpose}
+
+The primary objective of this system is to replace fragmented manual tracking and spreadsheet-based workflows with a centralized platform that optimizes shipping coordination. By integrating cargo requests with real-time vessel capacity, the database ensures that specialized goods—such as hazardous or standard items—are handled safely and efficiently. This transition to a digital hub is intended to eliminate booking errors, prevent the storage of incompatible cargo, and maximize container utilization. Ultimately, the system provides all stakeholders with reliable visibility into shipment status, which reduces operational overhead and improves overall service consistency.
+
+\subsection{Scope and Special Requirements}
+
+The scope of this database is strictly limited to active containerized shipping arrangements within the current fiscal year. While the system tracks cargo at the container level, it does not manage the specific itemized inventory inside those containers. Furthermore, to maintain a focused operational tool, the database excludes secondary functions such as customs documentation, tariff calculations, insurance claims, and payment processing, all of which are managed by external specialized systems. We also assume that all shipping parties and carriers have been pre-vetted, leaving user authentication to be handled by an external security framework.
+
+Several critical requirements guide the database logic. First, the system must enforce strict compatibility rules to ensure that dangerous goods follow safety protocols and standard cargo fits within dimensional limits. Second, it must maintain voyage integrity by ensuring that all cargo within a shared container stays on its assigned vessel throughout the journey. Finally, the architecture must support sequential routing across multiple global ports and allow for flexible logistics arrangements where the receiving party differs from the original sender, facilitating complex multi-party transfers.
+
+\subsection{Data Requirements}
+
+First and foremost, we will need to represent those carrier companies and the companies that have cargo that needs to be shipped. They might not have unique names. Carrier companies own vessels, each with a name and capacity. Both types of companies will need to have at least one relevant employee to serve as a liaison with the logistics company. These people will need to have their contact information stored as well.
+
+Now, to represent the actual shipping activities occurring. A shipping activity, referred to as a voyage, consists of a departure and a series of port calls. A company can send cargo on a voyage, in which case it will be put in a container. All cargo in the same container must be sent on the same voyage. A voyage has a departure date and an associated vessel. Each port call occurs after the vessel takes a particular route that connects the departure and destination port. At the port call, companies—either the sending company or a different one—can receive pieces of cargo. Port calls are tracked via their arrival date and sequence number on the voyage. Ports have a city and country, but they may not be unique for a given city.
+
+All cargos have a description and id. They may also be of a special type: dangerous or standard. If they are standard, their weight and volume are noted. If they are dangerous, they have one or more associated safety procedures. A cargo can only be stored in the same container as other cargo that support their requirements.
+
+\subsection{Core Terminology}
+
+\begin{description}
+    \item[Carrier Company] An entity that owns and operates the ocean-going vessels. These companies provide the physical transportation assets used by the logistics firm to fulfill client requests.
+    
+    \item[Shipping Party] The client organizations that utilize the logistics firm to move freight. This term encompasses both the originators (senders) and the recipients of the cargo.
+    
+    \item[Voyage] A defined maritime journey consisting of a vessel's departure from its origin, its progression through scheduled intermediate stops, and its arrival at the final destination.
+    
+    \item[Port Call] A specific, scheduled stop at a port during a voyage for loading or unloading operations. Port calls are tracked by their unique sequence number to maintain the chronological order of the itinerary.
+    
+    \item[Route] The individual navigation leg between two consecutive ports—specifically an origin and a destination—within a broader voyage itinerary.
+    
+    \item[Container] The primary shipping unit (typically 20-foot or 40-foot standard dimensions) used to secure and organize freight. All cargo tracking is conducted at this unit level.
+    
+    \item[Cargo] Freight that demands specific operational protocols. This includes Dangerous (safety-restricted) and Standard (standard dimensional or weight parameters) goods.
+    
+    \item[Point of Contact] The designated liaison at a Carrier Company or Shipping Party responsible for direct communication and coordination with the logistics firm.
+\end{description}
+
+\subsection{Database Entities}
+
+\begin{itemize}
+    \item Carrier Company
+    \item Shipping Party
+    \item Point of Contact
+    \item Vessel
+    \item Voyage
+    \item Container
+    \item Cargo
+    \item Dangerous Cargo (Cargo Subtype)
+    \item Standard Cargo (Cargo Subtype)
+    \item Safety Procedure
+    \item Port
+    \item Route (Weak Entity)
+    \item Port Call (Weak Entity)
+\end{itemize}
+
+\subsection{Database Relationships}
+
+\begin{itemize}
+    \item Works For: Point of Contact -- Carrier Company
+    \item Works For: Point of Contact -- Shipping Party
+    \item Belongs To: Vessel -- Carrier Company
+    \item Sends: Ternary Relationship (Shipping Party -- Voyage -- Cargos)
+    \item Inside: Cargo -- Container
+    \item Goes On: Vessels -- Voyage
+    \item Is Part Of: Port Call -- Voyage
+    \item Uses: Port Call -- Route
+    \item Connects: Route to Ports (Origin and Destination)
+    \item Receives: Ternary relationship (Shipping Party -- Cargo -- Port Call)
+    \item Applies To: Safety Procedure -- Dangerous Cargo
+    \item IS-A Hierarchy: Cargo specialization into Dangerous or Standard subtypes
+\end{itemize}
+
+\subsection{Application Overview}
+
+The application provides a platform for managing international shipping logistics operations. Users from the logistics company will interact with the system to book cargo on voyages, assign cargo to appropriate containers, track shipment progress through port calls, and coordinate with carrier companies and shipping parties. The system enforces business rules automatically, such as ensuring cargo compatibility within containers and preventing overbooking of vessel capacity.
+
+\subsection{Core Operations and Functions}
+
+\subsubsection{Cargo Booking and Validation}
+
+When a client requests a shipment, the system identifies viable voyages by matching the desired route with departure windows. During this process, the application captures specific cargo details and determines if specialized handling is required. Before a booking is finalized, the system performs a three-point validation: it verifies that the assigned container meets any special requirements and ensures the vessel's itinerary includes a port call where the cargo can be successfully received.
+
+\subsubsection{Container Compatibility Management}
+
+To maintain safety and regulatory compliance, the system automatically audits container assignments. Dangerous goods are cross-referenced against safety protocols to prevent hazardous conflicts. Additionally, the system flags standard cargo that may require dedicated containers.
+
+\subsubsection{Voyage and Fleet Management}
+
+The platform provides a centralized interface for scheduling maritime journeys. Logistics managers can assign vessels to specific voyages, define the chronological sequence of port calls with precise arrival dates, and map the routes between consecutive stops. Throughout the journey, the system monitors capacity utilization to prevent overbooking and optimize the carrier fleet's performance.
+
+\subsubsection{Real-Time Tracking and Reporting}
+
+For stakeholder transparency, the application offers robust querying and reporting tools. Users can retrieve a shipment's location based on its latest port call, identify the specific container and voyage holding the cargo, and view expected arrival times and receiving party details.
+
+\section{ER Schema}
+
+% Note: The ER diagram should be included here as a separate PDF or image file
+% Use: \includegraphics[width=\textwidth]{er_diagram.pdf}
+
+The ER diagram is included as a separate file.
+
+\section{Relational Schema}
+
+The following relations have been derived from the ER schema using the standard translation method:
+
+\begin{enumerate}
+    \item Carrier\_Companies(\underline{company\_id}, company\_name)
+    
+    \item Point\_of\_Contacts(\underline{person\_id}, name, email, phone, company\_id, party\_id):\\
+    company\_id foreign key referencing relation Carrier\_Company, party\_id foreign key referencing relation Shipping\_Party
+    
+    \item Vessels(\underline{vessel\_id}, vessel\_name, capacity, company\_id):\\
+    company\_id foreign key referencing relation Carrier\_Company
+    
+    \item Voyage(\underline{voyage\_id}, departure\_date, vessel\_id, party\_id):\\
+    vessel\_id foreign key referencing relation Vessels, party\_id foreign key referencing relation Shipping\_Party
+    
+    \item Cargos(\underline{cargo\_id}, description, container\_number, party\_id):\\
+    container\_number foreign key referencing relation Container, party\_id foreign key referencing relation Shipping\_Party
+    
+    \item Container(\underline{container\_number}, container\_type)
+    
+    \item Dangerous\_Cargo(\underline{cargo\_id}, procedure\_id):\\
+    cargo\_id foreign key referencing relation Cargos, procedure\_id foreign key referencing relation Safety\_Procedures
+    
+    \item Standard\_Cargo(\underline{cargo\_id}, weight, volume):\\
+    cargo\_id foreign key referencing relation Cargos
+    
+    \item Safety\_Procedure(\underline{procedure\_id}, procedure\_description)
+    
+    \item Route(\underline{party\_id, sequence\_number, route\_number}, origin\_port\_id, destination\_port\_id):\\
+    party\_id foreign key referencing relation Shipping\_Party, sequence\_number foreign key referencing relation Port\_Call, origin\_port\_id and destination\_port\_id foreign key referencing relation Ports
+    
+    \item Ports(\underline{port\_id}, country, city)
+    
+    \item Port\_Call(\underline{party\_id, sequence\_number}, arrival\_date, route\_number, voyage\_id):\\
+    party\_id foreign key referencing relation Shipping\_Party, route\_number foreign key referencing relation Route, voyage\_id foreign key referencing relation Voyage
+    
+    \item Shipping\_Party(\underline{party\_id}, party\_name)
+\end{enumerate}
+
+\noindent\textbf{Note on Relation Combination:} There are no opportunities to combine relations without introducing redundancy. All relationships in the schema are either one-to-many or involve specialization hierarchies, and combining relations would result in duplicated data.
+
+\section{Creativity}
+
+This application employed a number of complex elements of the course material. We included two weak entities in the form of routes and port calls. We also used ternary relationships to represent cargo being sent and received at certain voyages and port calls by particular shipping parties. Lastly, we included an ISA hierarchy that explores multiple ways a subentity can be distinct from its parents. We use it for both unique attributes and unique relationships.
+
+\subsection{Features That Stand Out}
+
+\begin{itemize}
+    \item \textbf{Domain Complexity:} The naval logistics domain involves sophisticated multi-party coordination, specialized cargo handling requirements, and complex routing logic that goes beyond typical e-commerce or reservation systems.
+    
+    \item \textbf{Weak Entity Sets:} Routes and Port Calls are properly modeled as weak entities, with Port Calls dependent on Voyages and Routes dependent on the voyage structure, reflecting real-world dependencies in maritime logistics.
+    
+    \item \textbf{Ternary Relationships:} Two ternary relationships (Sends and Receives) capture the complex interactions between Shipping Parties, Voyages/Port Calls, and Cargo, which cannot be adequately represented with binary relationships.
+    
+    \item \textbf{IS-A Hierarchy:} The Cargo specialization demonstrates multiple inheritance paths with both unique attributes (weight/volume) and unique relationships (safety procedures for dangerous cargo).
+    
+    \item \textbf{Business Constraints:} The schema enforces sophisticated real-world constraints such as container compatibility and safety protocol compliance.
+\end{itemize}
+
+\section{Inspiration and References}
+
+The design and logic of this database system were informed by the operational standards and documentation of several global leaders in the maritime industry. These references provided the necessary domain knowledge to ensure the application reflects real-world logistics complexities:
+
+\begin{itemize}
+    \item \textbf{Maersk} (maersk.com): Provided essential insights into vessel operations, the variety of standardized container types, and the end-to-end cargo booking process.
+    
+    \item \textbf{Mediterranean Shipping Company} (msc.com): Served as a primary reference for understanding international cargo classification systems and the specific handling requirements for specialized freight.
+    
+    \item \textbf{CMA CGM Group} (cmacgm-group.com): Informed the modeling of multi-port voyage structures and the complex routing logic required for global shipping itineraries.
+\end{itemize}
+
+\section{Team Collaboration}
+
+The team collaborated through two video meetings and continuous communication via online messaging. Nehir proposed the application domain and researched industry practices. Aerin and Nehir were primarily responsible for designing the ER schema, iterating through multiple versions to achieve the final design.
+
+Stalbek contributed by reviewing and refining the ER design, identifying normalization opportunities, and leading the translation of the ER schema into the relational schema. Aerin was mainly responsible for conducting the requirement analysis, writing entity and relationship descriptions, and documenting the application functionality. All team members contributed to the creativity aspects and participated in design decisions collaboratively.
+
+\end{document}
